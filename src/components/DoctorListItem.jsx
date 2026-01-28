@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import theme from '../theme/theme';
 
-const DoctorListItem = ({ doctor, onPress }) => {
+const DoctorListItem = ({ doctor, onPress, showDispensaryInfo = true }) => {
     const nearestDispensary = doctor.availableAt?.[0] || null;
     const distance = doctor.nearestDistance !== undefined ? doctor.nearestDistance : null;
 
@@ -32,7 +32,7 @@ const DoctorListItem = ({ doctor, onPress }) => {
                 </Text>
             )}
 
-            {nearestDispensary && (
+            {showDispensaryInfo && nearestDispensary && (
                 <View style={styles.dispensaryInfo}>
                     <Text style={styles.dispensaryName}>
                         {nearestDispensary.dispensaryName}
@@ -43,7 +43,7 @@ const DoctorListItem = ({ doctor, onPress }) => {
                 </View>
             )}
 
-            {nearestDispensary?.fees && (
+            {showDispensaryInfo && nearestDispensary?.fees && (
                 <View style={styles.feeContainer}>
                     <Text style={styles.feeLabel}>Consultation Fee:</Text>
                     <Text style={styles.feeAmount}>
@@ -54,7 +54,7 @@ const DoctorListItem = ({ doctor, onPress }) => {
 
             <View style={styles.footer}>
                 <Text style={styles.availableText}>
-                    {doctor.availableAt?.length > 1
+                    {doctor.availableAt?.length > 0
                         ? `Available at ${doctor.availableAt.length} locations`
                         : 'View Details'}
                 </Text>

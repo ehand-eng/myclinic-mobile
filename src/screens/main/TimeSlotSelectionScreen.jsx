@@ -13,7 +13,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import theme from '../../theme/theme';
 
 const TimeSlotSelectionScreen = ({ navigation, route }) => {
-    const { doctor, dispensary } = route.params;
+    const { doctor, dispensary, dispensaryId, doctorId } = route.params;
     const [timeSlots, setTimeSlots] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedSlot, setSelectedSlot] = useState(null);
@@ -25,10 +25,27 @@ const TimeSlotSelectionScreen = ({ navigation, route }) => {
     const fetchTimeSlots = async () => {
         setLoading(true);
 
+        // Determine the correct Dispensary ID
+        const targetDispensaryId = dispensaryId || dispensary?.dispensaryId || dispensary?._id;
+        const targetDoctorId = doctorId || doctor?._id;
+
+        console.log('Fetching Time Slots for:', {
+            doctorId: targetDoctorId,
+            dispensaryId: targetDispensaryId,
+            rawDispensary: dispensary,
+            paramDispensaryId: dispensaryId
+        });
+
+        if (!targetDispensaryId || !targetDoctorId) {
+            Alert.alert('Error', 'Invalid Doctor or Dispensary ID. Please try again.');
+            setLoading(false);
+            return;
+        }
+
         try {
             const result = await getNextAvailableTimeSlots(
-                doctor._id,
-                dispensary.dispensaryId
+                targetDoctorId,
+                targetDispensaryId
             );
 
             if (result.success) {

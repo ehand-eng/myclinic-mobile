@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Create axios instance
 const apiClient = axios.create({
-    baseURL: API_BASE_URL || 'http://192.168.1.11:5001',
+    baseURL: API_BASE_URL || 'http://192.168.8.193:5001',
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json',
@@ -109,6 +109,7 @@ export const sendOTP = async (identifier) => {
         });
         return { success: true, data: response.data };
     } catch (error) {
+        console.log(error);
         return {
             success: false,
             error: error.response?.data?.message || error.message
@@ -153,6 +154,36 @@ export const resendOTP = async (identifier) => {
 };
 
 // ==================== Doctor & Location APIs ====================
+
+/**
+ * Get all doctors (for manual search)
+ */
+export const getAllDoctors = async () => {
+    try {
+        const response = await apiClient.get('/api/doctors');
+        return { success: true, data: response.data };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message
+        };
+    }
+};
+
+/**
+ * Get all dispensaries (for calculating distances in manual search)
+ */
+export const getAllDispensaries = async () => {
+    try {
+        const response = await apiClient.get('/api/dispensaries');
+        return { success: true, data: response.data };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message
+        };
+    }
+};
 
 /**
  * Get doctors nearby based on location

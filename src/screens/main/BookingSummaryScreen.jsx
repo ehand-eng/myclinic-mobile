@@ -7,18 +7,41 @@ import {
     Alert,
 } from 'react-native';
 import { getBookingSummary } from '../../services/apiClient';
+import { addFavorite, isFavorite } from '../../services/favoriteService';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/Button';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import theme from '../../theme/theme';
 
 const BookingSummaryScreen = ({ navigation, route }) => {
-    const { transactionId } = route.params;
+    const { transactionId, sourceDoctor, sourceDispensary } = route.params;
+    const { user } = useAuth();
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isFav, setIsFav] = useState(false);
+    const [addingFav, setAddingFav] = useState(false);
 
     useEffect(() => {
         fetchBookingSummary();
     }, []);
+
+    useEffect(() => {
+        if (booking && user?.mobile) {
+            checkIfFavorite();
+        }
+    }, [booking, user]);
+
+    const checkIfFavorite = async () => {
+        if (!booking || !user?.mobile) return;
+
+        const docId = sourceDoctor?._id || booking.doctor?._id || booking.doctorId;
+        const dispId = sourceDispensary?._id || sourceDispensary?.dispensaryId || booking.dispensary?._id || booking.dispensaryId;
+
+        if (docId && dispId) {
+            const fav = await isFavorite(user.mobile, docId, dispId);
+            setIsFav(fav);
+        }
+    };
 
     const fetchBookingSummary = async () => {
         setLoading(true);
@@ -36,6 +59,53 @@ const BookingSummaryScreen = ({ navigation, route }) => {
             Alert.alert('Error', 'An error occurred while fetching booking summary');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAddToFavorites = async () => {
+        if (!booking || !user?.mobile) return;
+
+        // Prioritize source keys from navigation, fall back to booking data
+        // sourceDispensary typically comes from search/details which has dispensaryId aliased or _id
+        const finalDocId = sourceDoctor?._id || booking.doctor?._id || booking.doctorId;
+        const finalDispId = sourceDispensary?.dispensaryId || sourceDispensary?._id || booking.dispensary?._id || booking.dispensaryId;
+
+        console.log('Adding to favorites with IDs:', {
+            docId: finalDocId,
+            dispId: finalDispId,
+            sourceDoc: sourceDoctor,
+            sourceDisp: sourceDispensary
+        });
+
+        if (!finalDocId || !finalDispId) {
+            Alert.alert('Error', 'Cannot add to favorites: Missing ID information');
+            return;
+        }
+
+        // Construct complete objects for storage
+        const doctorObj = {
+            ...booking.doctor,
+            ...sourceDoctor,
+            _id: finalDocId
+        };
+        const dispensaryObj = {
+            ...booking.dispensary,
+            ...sourceDispensary,
+            _id: finalDispId,
+            // Ensure display fields are present
+            dispensaryName: sourceDispensary?.dispensaryName || booking.dispensary?.name,
+            dispensaryAddress: sourceDispensary?.dispensaryAddress || booking.dispensary?.address
+        };
+
+        setAddingFav(true);
+        const result = await addFavorite(user.mobile, doctorObj, dispensaryObj);
+        setAddingFav(false);
+
+        if (result.success) {
+            setIsFav(true);
+            Alert.alert('Success', 'Added to favorites successfully');
+        } else {
+            Alert.alert('Error', result.message || 'Failed to add to favorites');
         }
     };
 
@@ -202,12 +272,24 @@ const BookingSummaryScreen = ({ navigation, route }) => {
                 </Text>
             </View>
 
-            {/* Action Button */}
-            <Button
-                title="Done"
-                onPress={handleDone}
-                style={styles.doneButton}
-            />
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsContainer}>
+                {!isFav && (
+                    <Button
+                        title="Add to Favorites"
+                        onPress={handleAddToFavorites}
+                        style={[styles.button]}
+                        variant="secondary"
+                        loading={addingFav}
+                    />
+                )}
+
+                <Button
+                    title="Done"
+                    onPress={handleDone}
+                    style={styles.button}
+                />
+            </View>
         </ScrollView>
     );
 };
@@ -382,6 +464,16 @@ const styles = StyleSheet.create({
     },
     button: {
         marginTop: theme.spacing.md,
+    },
+    actionButtonsContainer: {
+        marginTop: theme.spacing.md,
+        gap: theme.spacing.sm,
+    },
+    secondaryButton: {
+        marginTop: 0,
+        backgroundColor: theme.colors.white,
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
     },
 });
 

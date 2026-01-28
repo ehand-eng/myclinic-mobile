@@ -9,13 +9,55 @@ import {
 import Button from '../../components/Button';
 import theme from '../../theme/theme';
 
+import { getDoctorDispensaryFees } from '../../services/apiClient';
+
 const DoctorDetailsScreen = ({ navigation, route }) => {
     const { doctor } = route.params;
+    const [availableAt, setAvailableAt] = React.useState(doctor.availableAt || []);
+
+    React.useEffect(() => {
+        const fetchMissingFees = async () => {
+            const updatedAvailableAt = [...availableAt];
+            let hasChaanges = false;
+
+            for (let i = 0; i < updatedAvailableAt.length; i++) {
+                const dispensary = updatedAvailableAt[i];
+                if (!dispensary.fees) {
+                    try {
+                        const result = await getDoctorDispensaryFees(
+                            doctor._id,
+                            dispensary.dispensaryId
+                        );
+                        if (result.success && result.data) {
+                            updatedAvailableAt[i] = {
+                                ...dispensary,
+                                fees: result.data
+                            };
+                            hasChaanges = true;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching fees for dispensary:', dispensary.dispensaryName, error);
+                    }
+                }
+            }
+
+            if (hasChaanges) {
+                setAvailableAt(updatedAvailableAt);
+            }
+        };
+
+        fetchMissingFees();
+    }, []);
 
     const handleDispensaryPress = (dispensary) => {
         navigation.navigate('TimeSlotSelection', {
             doctor,
-            dispensary,
+            doctorId: doctor._id, // Pass explicit Doctor ID
+            dispensary: {
+                ...dispensary,
+                _id: dispensary.dispensaryId // Remap dispensaryId to _id for consistency in next screens
+            },
+            dispensaryId: dispensary.dispensaryId // Pass explicit Dispensary ID
         });
     };
 
@@ -47,10 +89,10 @@ const DoctorDetailsScreen = ({ navigation, route }) => {
 
             {/* Available Locations */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Available at ({doctor.availableAt?.length || 0} locations)</Text>
+                <Text style={styles.sectionTitle}>Available at ({availableAt.length || 0} locations)</Text>
 
-                {doctor.availableAt && doctor.availableAt.length > 0 ? (
-                    doctor.availableAt.map((dispensary, index) => (
+                {availableAt.length > 0 ? (
+                    availableAt.map((dispensary, index) => (
                         <TouchableOpacity
                             key={index}
                             style={styles.dispensaryCard}
@@ -61,7 +103,7 @@ const DoctorDetailsScreen = ({ navigation, route }) => {
                                 <Text style={styles.dispensaryName}>
                                     {dispensary.dispensaryName}
                                 </Text>
-                                {dispensary.distance !== undefined && (
+                                {dispensary.distance !== undefined && dispensary.distance !== null && (
                                     <Text style={styles.distance}>
                                         {dispensary.distance.toFixed(1)} km
                                     </Text>

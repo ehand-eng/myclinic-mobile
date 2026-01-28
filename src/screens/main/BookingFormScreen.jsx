@@ -98,6 +98,8 @@ const BookingFormScreen = ({ navigation, route }) => {
                 // Navigate to booking summary
                 navigation.navigate('BookingSummary', {
                     transactionId: result.data.transactionId,
+                    sourceDoctor: doctor,
+                    sourceDispensary: dispensary
                 });
             } else {
                 Alert.alert('Booking Failed', result.error || 'Failed to create booking');
